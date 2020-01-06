@@ -1,4 +1,4 @@
-﻿<#
+<#
 
  
 ScriptName : Move-AzAvailabilitySetMembers
@@ -38,14 +38,19 @@ Param(
    
    [Parameter(Mandatory=$True,Position=2)]
    [string]$ResourceGroup,
+   [Parameter(Mandatory=$True,Position=3)]
+   [string]$VmSize,
+
    [Parameter(Mandatory=$False)]
    [boolean]$Login,
    [Parameter(Mandatory=$False)]
    [boolean]$SelectSubscription,
    [Parameter(Mandatory=$False)]
    [boolean]$PauseAfterEachVM
+
 )
 
+If (!($VMsize)){$VMsize = $False} #Need to specify $false for the resizing is no new size is given
 
 Import-Module .\Move-AzAvailabilitySetMembers.psm1
 
@@ -168,7 +173,16 @@ If (!($Parallel)){
             WriteLog -Description $Description -LogFile $LogFile 
             
             StopAZVM -VMObject $VMObject -LogFile $LogFile
-            Set-AsSetting -VmObject $VmObject -TargetASObject $TargetAVSetObjectID -LogFile $LogFile
+            If ($VMSize) {
+                If (ValidateVMSize -Vmsize $VMSize -location $VMObject.location) {
+                    WriteLog "  -Resizing VM to new size: $VMSize" -LogFile $LogFile -Color "Yellow" 
+                }else{
+                    $Location=$VMObject.location
+                    WriteLog "!! Resizing VM to new size: $VMSize failed !! Manual resizing required after deployment !!" -LogFile $LogFile -Color "Red" 
+                    WriteLog "!! Possible entry error or size not available in location: $Location" -LogFile $LogFile -Color "Red" 
+                }
+            }
+            Set-AsSetting -VmObject $VmObject -TargetASObject $TargetAVSetObjectID -LogFile $LogFile -vmSize $VmSize
             Write-host "  -Validating if VM exists" -ForegroundColor Yellow -NoNewline
         Do {
             Write-host "." -NoNewline -ForegroundColor Yellow
