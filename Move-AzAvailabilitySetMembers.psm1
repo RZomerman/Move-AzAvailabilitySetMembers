@@ -101,7 +101,7 @@ Function Select-Subscription ($SubscriptionName, $AzureAccount){
             Select-AzSubscription -SubscriptionName $SubscriptionName -TenantId $AzureAccount.Context.Tenant.TenantId
 }
 
-Function Set-AsSetting ($VmObject, $LogFile, $TargetASObjectID){    
+Function Set-AsSetting ($VmObject, $LogFile, $TargetASObjectID, $VMSize){    
     # New section added to allow for managed disks
     if ($VmObject.StorageProfile.OsDisk.VHD -eq $null) {
         $VMObject.StorageProfile.OsDisk.ManagedDisk.Id = (Get-AZDisk -ResourceGroupName $VmRG -DiskName $($VMObject.StorageProfile.OsDisk.Name)).Id
@@ -132,6 +132,10 @@ Function Set-AsSetting ($VmObject, $LogFile, $TargetASObjectID){
         $VmObject.StorageProfile.DataDisks[$s-1].CreateOption = 'Attach'
     }
     
+    If ($VMSize){
+        $VmObject.HardwareProfile.VmSize = $VMSize
+    }
+
     $VMName=$VmObject.Name 
     $Description = "  -Recreating the Azure VM: (Step 1 : Removing the VM...) "
     $Command = {Remove-AzVM -Name $VmObject.Name -ResourceGroupName $VmObject.ResourceGroupName -Force | Out-null}
@@ -180,6 +184,16 @@ Function Validate-AsExistence ($ASName, $VmRG, $LogFile) {
     return $AsExist
 }
 
+Function ValidateVMSize ($VMSize, $location){
+    [array]$AvailableSizes=Get-AzVMSize -Location $location
+    #write-host "searching for $VMSize"
+    If ($AvailableSizes.name -contains $VMSize) {
+        return $True
+    }else{
+        return $False
+    }
+
+}
 Function LoadModule{
     param (
         [parameter(Mandatory = $true)][string] $name
